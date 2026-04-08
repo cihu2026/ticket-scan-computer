@@ -53,3 +53,145 @@
 
     .waiting {
       background: #333;
+      font-size: 48px;
+    }
+
+    #video {
+      margin-top: 20px;
+      width: 320px;
+      border-radius: 16px;
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>🎫 入口驗票</h1>
+<div id="modeHint">🟢 模式：🔫 掃描器</div>
+
+<div class="buttons">
+  <button onclick="switchMode('scanner')">🔫 掃描器</button>
+  <button onclick="switchMode('camera')">📷 相機</button>
+</div>
+
+<input id="scannerInput" type="text" autocomplete="off">
+
+<div id="result" class="waiting">
+  ⏳ 請掃描票券
+</div>
+
+<video id="video" autoplay playsinline></video>
+
+<audio id="okSound">
+  <source src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg">
+</audio>
+<audio id="failSound">
+  <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg">
+</audio>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+
+<script>
+  let mode = "scanner";
+  let html5QrCode = null;
+  let locked = false;
+
+  const input = document.getElementById("scannerInput");
+  const result = document.getElementById("result");
+  const okSound = document.getElementById("okSound");
+  const failSound = document.getElementById("failSound");
+
+  // ===== 模式切換 =====
+  function switchMode(m) {
+    mode = m;
+    locked = false;
+
+    document.getElementById("modeHint").textContent =
+      m === "scanner"
+        ? "🟢 模式：🔫 掃描器"
+        : "🔵 模式：📷 相機";
+
+    resetUI();
+
+    if (m === "scanner") {
+      stopCamera();
+      input.focus();
+    } else {
+      startCamera();
+    }
+  }
+
+  // ===== 掃描器輸入 =====
+  input.addEventListener("keydown", e => {
+    if (mode !== "scanner" || locked) return;
+    if (e.key === "Enter") {
+      const code = input.value.trim();
+      input.value = "";
+      if (code) verifyTicket(code);
+    }
+  });
+
+  // ===== 相機掃描 =====
+  function startCamera() {
+    document.getElementById("video").style.display = "block";
+    html5QrCode = new Html5Qrcode("video");
+
+    Html5Qrcode.getCameras().then(cams => {
+      if (!cams.length) return;
+      html5QrCode.start(cams[0].id, { fps: 10, qrbox: 250 },
+        text => {
+          if (!locked) verifyTicket(text);
+        }
+      );
+    });
+  }
+
+  function stopCamera() {
+    document.getElementById("video").style.display = "none";
+    if (html5QrCode?.isScanning) html5QrCode.stop();
+  }
+
+  // ===== 驗票邏輯（示範）=====
+  function verifyTicket(code) {
+    locked = true;
+    console.log("掃描內容", code);
+
+    // 👉 這裡之後可接後端 API
+    const valid = code.startsWith("OK");
+
+    if (valid) {
+      showSuccess();
+    } else {
+      showError();
+    }
+
+    setTimeout(() => {
+      resetUI();
+      locked = false;
+      if (mode === "scanner") input.focus();
+    }, 1500);
+  }
+
+  function showSuccess() {
+    okSound.play();
+    result.className = "success";
+    result.textContent = "✅ 通過";
+  }
+
+  function showError() {
+    failSound.play();
+    result.className = "error";
+    result.textContent = "❌ 無效";
+  }
+
+  function resetUI() {
+    result.className = "waiting";
+    result.textContent = "⏳ 請掃描票券";
+  }
+
+  switchMode("scanner");
+</script>
+
+</body>
+</html>
