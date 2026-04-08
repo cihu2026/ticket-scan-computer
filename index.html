@@ -1,87 +1,81 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <title>🎫 驗票入口</title>
+<meta charset="UTF-8" />
+<title>🎫 入口驗票</title>
 
-  <style>
-    body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont;
-      background: #000;
-      color: #fff;
-      text-align: center;
-      padding: 30px;
-    }
+<style>
+  body {
+    background: #000;
+    color: #fff;
+    font-family: system-ui, -apple-system;
+    text-align: center;
+    padding: 30px;
+  }
 
-    h1 {
-      font-size: 42px;
-      margin-bottom: 10px;
-    }
+  h1 {
+    font-size: 42px;
+    margin-bottom: 10px;
+  }
 
-    #modeHint {
-      font-size: 22px;
-      margin-bottom: 20px;
-    }
+  #counter {
+    font-size: 44px;
+    margin: 20px 0;
+  }
 
-    .buttons button {
-      font-size: 20px;
-      padding: 10px 20px;
-      margin: 5px;
-      cursor: pointer;
-    }
+  #counter button {
+    font-size: 36px;
+    padding: 10px 20px;
+    cursor: pointer;
+  }
 
-    #scannerInput {
-      position: absolute;
-      opacity: 0;
-    }
+  #count {
+    padding: 0 30px;
+    cursor: pointer;
+  }
 
-    #result {
-      margin-top: 40px;
-      padding: 60px;
-      border-radius: 20px;
-      font-size: 96px;
-      font-weight: bold;
-    }
+  #result {
+    margin-top: 30px;
+    padding: 60px;
+    border-radius: 20px;
+    font-size: 96px;
+    font-weight: bold;
+  }
 
-    .success {
-      background: #1b8f3a;
-    }
+  .waiting {
+    background: #333;
+    font-size: 48px;
+  }
 
-    .error {
-      background: #a40000;
-    }
+  .success {
+    background: #1b8f3a;
+  }
 
-    .waiting {
-      background: #333;
-      font-size: 48px;
-    }
+  .error {
+    background: #a40000;
+  }
 
-    #video {
-      margin-top: 20px;
-      width: 320px;
-      border-radius: 16px;
-      display: none;
-    }
-  </style>
+  /* 永遠可掃 input（隱形但存在） */
+  #scannerInput {
+    position: absolute;
+    opacity: 0;
+  }
+</style>
 </head>
 
 <body>
 
 <h1>🎫 入口驗票</h1>
-<div id="modeHint">🟢 模式：🔫 掃描器</div>
 
-<div class="buttons">
-  <button onclick="switchMode('scanner')">🔫 掃描器</button>
-  <button onclick="switchMode('camera')">📷 相機</button>
+<div id="counter">
+  <button onclick="changeCount(-1)">➖</button>
+  <span id="count" onclick="editCount()" title="點擊可修改人數">0</span>
+  <button onclick="changeCount(1)">➕</button>
 </div>
+
+<div id="result" class="waiting">⏳ 請掃描票券</div>
 
 <input id="scannerInput" type="text" autocomplete="off">
-
-<div id="result" class="waiting">
-  ⏳ 請掃描票券
-</div>
-
-<video id="video" autoplay playsinline></video>
 
 <audio id="okSound">
   <source src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg">
@@ -90,108 +84,121 @@
   <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg">
 </audio>
 
-<script src="https://unpkg.com/html5-qrcode"></script>
-
 <script>
-  let mode = "scanner";
-  let html5QrCode = null;
-  let locked = false;
+/* =========================
+   🎫 永遠可掃｜入口驗票版（完整版）
+   ========================= */
 
-  const input = document.getElementById("scannerInput");
-  const result = document.getElementById("result");
-  const okSound = document.getElementById("okSound");
-  const failSound = document.getElementById("failSound");
+let locked = false;
+let count = Number(localStorage.getItem("entryCount")) || 0;
 
-  // ===== 模式切換 =====
-  function switchMode(m) {
-    mode = m;
-    locked = false;
+const input  = document.getElementById("scannerInput");
+const result = document.getElementById("result");
+const countEl = document.getElementById("count");
+const okSound   = document.getElementById("okSound");
+const failSound = document.getElementById("failSound");
 
-    document.getElementById("modeHint").textContent =
-      m === "scanner"
-        ? "🟢 模式：🔫 掃描器"
-        : "🔵 模式：📷 相機";
+/* ===== 初始化 ===== */
+updateCount();
+resetUI();
 
+/* ===== 永遠搶 focus（核心） ===== */
+setInterval(() => {
+  if (document.activeElement !== input) {
+    input.focus();
+  }
+}, 400);
+
+/* ===== 掃描器輸入 ===== */
+input.addEventListener("keydown", (e) => {
+  if (locked) return;
+
+  if (e.key === "Enter") {
+    const code = input.value.trim();
+    input.value = "";
+    if (code) verifyTicket(code);
+  }
+});
+
+/* ===== 驗票邏輯 ===== */
+function verifyTicket(code) {
+  locked = true;
+  console.log("🎫 掃描：", code);
+
+  // ✅ 範例邏輯（OK 開頭為真票）
+  const isValid = code.startsWith("OK");
+
+  if (isValid) {
+    showSuccess();
+    changeCount(1);
+  } else {
+    showFail();
+  }
+
+  setTimeout(() => {
     resetUI();
+    locked = false;
+    input.focus();
+  }, 1500);
+}
 
-    if (m === "scanner") {
-      stopCamera();
-      input.focus();
-    } else {
-      startCamera();
-    }
+/* ===== 人數控制 ===== */
+function changeCount(delta) {
+  count += delta;
+  if (count < 0) count = 0;
+  saveCount();
+}
+
+function updateCount() {
+  countEl.textContent = count;
+}
+
+function saveCount() {
+  localStorage.setItem("entryCount", count);
+  updateCount();
+}
+
+/* ===== 直接輸入人數（像手機） ===== */
+function editCount() {
+  const value = prompt("請輸入目前正確的人數：", count);
+  if (value === null) return;
+
+  const num = Number(value);
+  if (Number.isNaN(num) || num < 0) {
+    alert("請輸入有效的數字");
+    return;
   }
 
-  // ===== 掃描器輸入 =====
-  input.addEventListener("keydown", e => {
-    if (mode !== "scanner" || locked) return;
-    if (e.key === "Enter") {
-      const code = input.value.trim();
-      input.value = "";
-      if (code) verifyTicket(code);
-    }
-  });
+  count = num;
+  saveCount();
+}
 
-  // ===== 相機掃描 =====
-  function startCamera() {
-    document.getElementById("video").style.display = "block";
-    html5QrCode = new Html5Qrcode("video");
+/* ===== UI ===== */
+function showSuccess() {
+  okSound.currentTime = 0;
+  okSound.play();
+  result.className = "success";
+  result.textContent = "✅ 通過";
+}
 
-    Html5Qrcode.getCameras().then(cams => {
-      if (!cams.length) return;
-      html5QrCode.start(cams[0].id, { fps: 10, qrbox: 250 },
-        text => {
-          if (!locked) verifyTicket(text);
-        }
-      );
-    });
-  }
+function showFail() {
+  failSound.currentTime = 0;
+  failSound.play();
+  result.className = "error";
+  result.textContent = "❌ 無效";
+}
 
-  function stopCamera() {
-    document.getElementById("video").style.display = "none";
-    if (html5QrCode?.isScanning) html5QrCode.stop();
-  }
+function resetUI() {
+  result.className = "waiting";
+  result.textContent = "⏳ 請掃描票券";
+}
 
-  // ===== 驗票邏輯（示範）=====
-  function verifyTicket(code) {
-    locked = true;
-    console.log("掃描內容", code);
-
-    // 👉 這裡之後可接後端 API
-    const valid = code.startsWith("OK");
-
-    if (valid) {
-      showSuccess();
-    } else {
-      showError();
-    }
-
-    setTimeout(() => {
-      resetUI();
-      locked = false;
-      if (mode === "scanner") input.focus();
-    }, 1500);
-  }
-
-  function showSuccess() {
-    okSound.play();
-    result.className = "success";
-    result.textContent = "✅ 通過";
-  }
-
-  function showError() {
-    failSound.play();
-    result.className = "error";
-    result.textContent = "❌ 無效";
-  }
-
-  function resetUI() {
-    result.className = "waiting";
-    result.textContent = "⏳ 請掃描票券";
-  }
-
-  switchMode("scanner");
+/* ===== 頁面載入即就緒 ===== */
+window.addEventListener("load", () => {
+  input.focus();
+});
 </script>
 
 </body>
 </html>
+``
