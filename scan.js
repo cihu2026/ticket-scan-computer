@@ -1,67 +1,128 @@
-let currentMode = "scanner";
+/* =========================
+   🎫 Entrance Ticket Scan
+   ========================= */
+
+let mode = "scanner";     // scanner | camera
+let locked = false;
 let html5QrCode = null;
 
-// ====== 模式切換 ======
-function switchMode(mode) {
-  currentMode = mode;
+const input     = document.getElementById("scannerInput");
+const result    = document.getElementById("result");
+const modeHint  = document.getElementById("modeHint");
+const video     = document.getElementById("video");
+const okSound   = document.getElementById("okSound");
+const failSound = document.getElementById("failSound");
+
+/* ========= 模式切換 ========= */
+function switchMode(newMode) {
+  mode = newMode;
+  locked = false;
 
   if (mode === "scanner") {
+    modeHint.textContent = "🟢 模式：🔫 掃描器";
     stopCamera();
-    document.getElementById("scannerInput").focus();
+    resetUI();
+    focusScanner();
   } else {
+    modeHint.textContent = "🔵 模式：📷 相機";
+    resetUI();
     startCamera();
   }
 }
 
-// ====== 掃描後統一處理 ======
-function handleScanResult(code) {
-  console.log("掃描成功：", code);
-  alert("掃描成功：" + code);
-
-  // TODO: 這裡接後端驗票 API
-}
-
-// ====== 掃描器模式（JMC M‑6D）=====
-const input = document.getElementById("scannerInput");
-
+/* ========= 掃描器輸入（JMC M‑6D） ========= */
 input.addEventListener("keydown", (e) => {
-  if (currentMode !== "scanner") return;
+  if (mode !== "scanner") return;
+  if (locked) return;
 
   if (e.key === "Enter") {
-    const value = input.value.trim();
-    if (value) {
-      handleScanResult(value);
-      input.value = "";
-    }
+    const code = input.value.trim();
+    input.value = "";
+    if (code) verifyTicket(code);
   }
 });
 
-// ====== 相機掃描模式 ======
+/* ========= 相機掃描 ========= */
 function startCamera() {
-  const videoId = "video";
-  if (!html5QrCode) {
-    html5QrCode = new Html5Qrcode(videoId);
-  }
+  video.style.display = "block";
+  html5QrCode = new Html5Qrcode("video");
 
   Html5Qrcode.getCameras().then((cameras) => {
     if (!cameras.length) {
-      alert("找不到可用相機");
+      showError("找不到相機");
       return;
     }
 
     html5QrCode.start(
       cameras[0].id,
-      { fps: 10, qrbox: 250 },
+      { fps: 10, qrbox: 260 },
       (decodedText) => {
-        handleScanResult(decodedText);
-        stopCamera();
+        if (!locked) verifyTicket(decodedText);
       }
     );
   });
 }
 
 function stopCamera() {
+  video.style.display = "none";
   if (html5QrCode?.isScanning) {
     html5QrCode.stop();
   }
 }
+
+/* ========= 驗票核心（可接後端） ========= */
+function verifyTicket(code) {
+  locked = true;
+  console.log("🎫 掃描內容：", code);
+
+  // ✅ 示範：OK 開頭視為有效票
+  const isValid = code.startsWith("OK");
+
+  if (isValid) {
+    showSuccess();
+  } else {
+    showFail();
+  }
+
+  // 入口驗票節奏（1.5 秒自動重置）
+  setTimeout(() => {
+    resetUI();
+    locked = false;
+    if (mode === "scanner") focusScanner();
+  }, 1500);
+}
+
+/* ========= UI 狀態 ========= */
+function showSuccess() {
+  okSound.currentTime = 0;
+  okSound.play();
+
+  result.className = "success";
+  result.textContent = "✅ 通過";
+}
+
+function showFail() {
+  failSound.currentTime = 0;
+  failSound.play();
+
+  result.className = "error";
+  result.textContent = "❌ 無效";
+}
+
+function showError(msg) {
+  result.className = "error";
+  result.textContent = "❌ " + msg;
+}
+
+function resetUI() {
+  result.className = "waiting";
+  result.textContent = "⏳ 請掃描票券";
+}
+
+/* ========= 輔助 ========= */
+function focusScanner() {
+  input.focus();
+}
+
+/* ========= 預設啟動 ========= */
+switchMode("scanner");
