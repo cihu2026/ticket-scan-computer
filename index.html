@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ticket Scan</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    button { margin-right: 10px; }
+    #scannerInput {
+      font-size: 20px;
+      padding: 10px;
+      width: 100%;
+      margin-top: 20px;
+    }
+    #video {
+      width: 100%;
+      max-width: 400px;
+      margin-top: 20px;
+      border: 1px solid #ccc;
+    }
+  </style>
+</head>
+<body>
+
+<h1>票券掃描</h1>
+
+<!-- 模式切換 -->
+<button onclick="switchMode('scanner')">🔫 掃描器模式</button>
+<button onclick="switchMode('camera')">📷 相機模式</button>
+
+<!-- 掃描器輸入 -->
+<input
+  id="scannerInput"
+  type="text"
+  placeholder="請使用掃描器掃描 QR Code"
+  autocomplete="off"
+/>
+
+<!-- 相機畫面 -->
+<video id="video" autoplay playsinline></video>
+
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="scan.js"></script>
+</body>
+</html>

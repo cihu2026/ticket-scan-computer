@@ -1,1 +1,0 @@
-# ticket-scan-computer
