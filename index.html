@@ -2,44 +2,54 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <title>Ticket Scan</title>
+  <title>🎫 驗票入口</title>
+
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    button { margin-right: 10px; }
-    #scannerInput {
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont;
+      background: #000;
+      color: #fff;
+      text-align: center;
+      padding: 30px;
+    }
+
+    h1 {
+      font-size: 42px;
+      margin-bottom: 10px;
+    }
+
+    #modeHint {
+      font-size: 22px;
+      margin-bottom: 20px;
+    }
+
+    .buttons button {
       font-size: 20px;
-      padding: 10px;
-      width: 100%;
-      margin-top: 20px;
+      padding: 10px 20px;
+      margin: 5px;
+      cursor: pointer;
     }
-    #video {
-      width: 100%;
-      max-width: 400px;
-      margin-top: 20px;
-      border: 1px solid #ccc;
+
+    #scannerInput {
+      position: absolute;
+      opacity: 0;
     }
-  </style>
-</head>
-<body>
 
-<h1>票券掃描</h1>
+    #result {
+      margin-top: 40px;
+      padding: 60px;
+      border-radius: 20px;
+      font-size: 96px;
+      font-weight: bold;
+    }
 
-<!-- 模式切換 -->
-<button onclick="switchMode('scanner')">🔫 掃描器模式</button>
-<button onclick="switchMode('camera')">📷 相機模式</button>
+    .success {
+      background: #1b8f3a;
+    }
 
-<!-- 掃描器輸入 -->
-<input
-  id="scannerInput"
-  type="text"
-  placeholder="請使用掃描器掃描 QR Code"
-  autocomplete="off"
-/>
+    .error {
+      background: #a40000;
+    }
 
-<!-- 相機畫面 -->
-<video id="video" autoplay playsinline></video>
-
-<script src="https://unpkg.com/html5-qrcode"></script>
-<script src="scan.js"></script>
-</body>
-</html>
+    .waiting {
+      background: #333;
